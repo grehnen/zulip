@@ -162,11 +162,6 @@ test_policy(
     "realm_invite_to_realm_policy",
     settings_data.user_can_invite_users_by_email,
 );
-test_policy(
-    "user_can_move_messages_between_streams",
-    "realm_move_messages_between_streams_policy",
-    settings_data.user_can_move_messages_between_streams,
-);
 
 function test_message_policy(label, policy, validation_func) {
     run_test(label, ({override}) => {
@@ -228,17 +223,6 @@ run_test("user_can_move_messages_to_another_topic_nobody_case", ({override}) => 
     assert.equal(settings_data.user_can_move_messages_to_another_topic(), false);
 });
 
-run_test("user_can_move_messages_between_streams_nobody_case", ({override}) => {
-    override(current_user, "is_admin", true);
-    override(current_user, "is_guest", false);
-    override(
-        realm,
-        "realm_move_messages_between_streams_policy",
-        settings_config.move_messages_between_streams_policy_values.nobody.code,
-    );
-    assert.equal(settings_data.user_can_move_messages_between_streams(), false);
-});
-
 test_realm_group_settings(
     "realm_can_add_custom_emoji_group",
     settings_data.user_can_add_custom_emoji,
@@ -252,6 +236,11 @@ test_realm_group_settings(
 test_realm_group_settings(
     "realm_can_delete_own_message_group",
     settings_data.user_can_delete_own_message,
+);
+
+test_realm_group_settings(
+    "realm_can_move_messages_between_channels_group",
+    settings_data.user_can_move_messages_between_streams,
 );
 
 run_test("using_dark_theme", ({override}) => {
@@ -945,4 +934,32 @@ run_test("user_can_create_web_public_streams", ({override}) => {
     override(realm, "realm_enable_spectator_access", false);
     override(realm, "server_web_public_streams_enabled", false);
     assert.equal(settings_data.user_can_create_web_public_streams(), false);
+});
+
+run_test("guests_can_access_all_other_users", () => {
+    const guest_user_id = 1;
+    const member_user_id = 2;
+
+    const members = {
+        name: "role:members",
+        id: 1,
+        members: new Set([member_user_id]),
+        is_system_group: true,
+        direct_subgroup_ids: new Set([]),
+    };
+    const everyone = {
+        name: "role:everyone",
+        id: 2,
+        members: new Set([guest_user_id]),
+        is_system_group: true,
+        direct_subgroup_ids: new Set([1]),
+    };
+
+    user_groups.initialize({realm_user_groups: [members]});
+    realm.realm_can_access_all_users_group = members.id;
+    assert.ok(!settings_data.guests_can_access_all_other_users());
+
+    user_groups.initialize({realm_user_groups: [members, everyone]});
+    realm.realm_can_access_all_users_group = everyone.id;
+    assert.ok(settings_data.guests_can_access_all_other_users());
 });

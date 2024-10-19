@@ -5,7 +5,6 @@ import * as channel from "./channel";
 import {$t, $t_html} from "./i18n";
 import * as keydown_util from "./keydown_util";
 import * as loading from "./loading";
-import {page_params} from "./page_params";
 import * as settings_components from "./settings_components";
 import type {GroupSettingPillContainer} from "./typeahead_helper";
 import * as ui_report from "./ui_report";
@@ -32,6 +31,7 @@ let can_add_members_group_widget: GroupSettingPillContainer | undefined;
 let can_join_group_widget: GroupSettingPillContainer | undefined;
 let can_leave_group_widget: GroupSettingPillContainer | undefined;
 let can_manage_group_widget: GroupSettingPillContainer | undefined;
+let can_mention_group_widget: GroupSettingPillContainer | undefined;
 
 class UserGroupMembershipError {
     report_no_members_to_user_group(): void {
@@ -133,10 +133,6 @@ export function show_new_user_group_modal(): void {
     user_group_create_members.build_widgets();
 
     clear_error_display();
-
-    if (!page_params.development_environment) {
-        $("#new_group_can_manage_group_widget_container").hide();
-    }
 }
 
 function create_user_group(): void {
@@ -173,13 +169,9 @@ function create_user_group(): void {
     const can_leave_group =
         settings_components.get_group_setting_widget_value(can_leave_group_widget);
 
-    assert(settings_components.new_group_can_mention_group_widget !== null);
-    const can_mention_group_value = settings_components.new_group_can_mention_group_widget.value();
-    assert(can_mention_group_value !== undefined);
+    assert(can_mention_group_widget !== undefined);
     const can_mention_group =
-        typeof can_mention_group_value === "number"
-            ? can_mention_group_value
-            : Number.parseInt(can_mention_group_value, 10);
+        settings_components.get_group_setting_widget_value(can_mention_group_widget);
 
     const data = {
         name: group_name,
@@ -188,7 +180,7 @@ function create_user_group(): void {
         can_add_members_group: JSON.stringify(can_add_members_group),
         can_join_group: JSON.stringify(can_join_group),
         can_leave_group: JSON.stringify(can_leave_group),
-        can_mention_group,
+        can_mention_group: JSON.stringify(can_mention_group),
         can_manage_group: JSON.stringify(can_manage_group),
     };
     loading.make_indicator($("#user_group_creating_indicator"), {
@@ -261,6 +253,9 @@ export function set_up_handlers(): void {
         }
     });
 
+    // This will always be enabled when creating a user group.
+    settings_components.enable_opening_typeahead_on_clicking_label($container);
+
     can_add_members_group_widget = settings_components.create_group_setting_widget({
         $pill_container: $container.find(".can-add-members-group-container .pill-container"),
         setting_name: "can_add_members_group",
@@ -286,5 +281,9 @@ export function set_up_handlers(): void {
         setting_type: "group",
     });
 
-    user_group_components.setup_permissions_dropdown("can_mention_group", undefined, true);
+    can_mention_group_widget = settings_components.create_group_setting_widget({
+        $pill_container: $container.find(".can-mention-group-container .pill-container"),
+        setting_name: "can_mention_group",
+        setting_type: "group",
+    });
 }

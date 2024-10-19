@@ -176,7 +176,11 @@ export function user_can_create_web_public_streams(): boolean {
 }
 
 export function user_can_move_messages_between_streams(): boolean {
-    return user_has_permission(realm.realm_move_messages_between_streams_policy);
+    return user_has_permission_for_group_setting(
+        realm.realm_can_move_messages_between_channels_group,
+        "can_move_messages_between_channels_group",
+        "realm",
+    );
 }
 
 export function user_can_manage_all_groups(): boolean {
@@ -380,4 +384,11 @@ export function get_request_data_for_stream_privacy(selected_val: string): {
             };
         }
     }
+}
+
+export function guests_can_access_all_other_users(): boolean {
+    const everyone_group = user_groups.get_user_group_from_id(
+        realm.realm_can_access_all_users_group,
+    );
+    return everyone_group.name === "role:everyone";
 }
