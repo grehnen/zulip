@@ -3887,41 +3887,6 @@ paths:
                             - type: object
                               additionalProperties: false
                               description: |
-                                Event sent to administrators when the [data export
-                                consent][help-export-consent] status for a user changes, whether due
-                                to a user changing their consent preferences or a user being created
-                                or reactivated (since user creation/activation events do not contain
-                                these data).
-
-                                [help-export-consent]: /help/export-your-organization#configure-whether-administrators-can-export-your-private-data
-
-                                **Changes**: New in Zulip 10.0 (feature level 312). Previously,
-                                there was not event available to administrators with these data.
-                              properties:
-                                id:
-                                  $ref: "#/components/schemas/EventIdSchema"
-                                type:
-                                  allOf:
-                                    - $ref: "#/components/schemas/EventTypeSchema"
-                                    - enum:
-                                        - realm_export_consent
-                                user_id:
-                                  type: integer
-                                  description: |
-                                    The ID of the user whose setting was changed.
-                                consented:
-                                  type: boolean
-                                  description: |
-                                    Whether the user has consented for their private data export.
-                              example:
-                                {
-                                  "type": "realm_export_consent",
-                                  "user_id": 1,
-                                  "consented": true,
-                                }
-                            - type: object
-                              additionalProperties: false
-                              description: |
                                 Event sent to users who can administer a newly created bot
                                 user. Clients will also receive a `realm_user` event that
                                 contains basic details (but not the API key).
@@ -4492,20 +4457,6 @@ paths:
                                             setting controlled this permission; `true` corresponded to `Everyone`, and
                                             `false` to `Admins`.
                                         - $ref: "#/components/schemas/GroupSettingValue"
-                                    can_move_messages_between_channels_group:
-                                      allOf:
-                                        - description: |
-                                            A [group-setting value](/api/group-setting-values) defining the set of
-                                            users who have permission to move messages from one channel to another
-                                            in the organization.
-
-                                            **Changes**: New in Zulip 10.0 (feature level 310). Previously, this
-                                            permission was controlled by the enum `move_messages_between_streams_policy`.
-                                            Values were 1=Members, 2=Admins, 3=Full members, 4=Moderators, 6=Nobody.
-
-                                            In Zulip 7.0 (feature level 159), `Nobody` was added as an option to
-                                            `move_messages_between_streams_policy` enum.
-                                        - $ref: "#/components/schemas/GroupSettingValue"
                                     can_manage_all_groups:
                                       allOf:
                                         - $ref: "#/components/schemas/GroupSettingValue"
@@ -4830,6 +4781,27 @@ paths:
                                         **Changes**: New in Zulip 7.0 (feature level 162). Previously, there was
                                         no time limit for moving messages between channels for users with permission
                                         to do so.
+                                    move_messages_between_streams_policy:
+                                      type: integer
+                                      description: |
+                                        The [policy][permission-level] for which users can move messages from
+                                        one channel to another.
+
+                                        - 1 = Members only
+                                        - 2 = Administrators only
+                                        - 3 = [Full members][calc-full-member] only
+                                        - 4 = Moderators only
+                                        - 6 = Nobody
+
+                                        See [`PATCH /messages/{message_id}`](/api/update-message) for details and
+                                        history of how message editing permissions work.
+
+                                        **Changes**: Nobody added as an option in Zulip 7.0 (feature level 159).
+
+                                        New in Zulip 4.0 (feature level 56).
+
+                                        [permission-level]: /api/roles-and-permissions#permission-levels
+                                        [calc-full-member]: /api/roles-and-permissions#determining-if-a-user-is-a-full-member
                                     name:
                                       type: string
                                       description: |
@@ -8293,8 +8265,8 @@ paths:
         linked documentation on when users are allowed to update messages are:
 
         - `allow_message_editing`
-        - `can_move_messages_between_channels_group`
         - `edit_topic_policy`
+        - `move_messages_between_streams_policy`
         - `message_content_edit_limit_seconds`
         - `move_messages_within_stream_limit_seconds`
         - `move_messages_between_streams_limit_seconds`
@@ -8304,11 +8276,7 @@ paths:
         of the [`realm op: update_dict`](/api/get-events#realm-update_dict)
         event in [`GET /events`](/api/get-events).
 
-        **Changes**: In Zulip 10.0 (feature level 310), `move_messages_between_streams_policy`
-        was removed and replaced by `can_move_messages_between_channels_group`
-        realm setting.
-
-        Prior to Zulip 7.0 (feature level 172), anyone could add a
+        **Changes**: Prior to Zulip 7.0 (feature level 172), anyone could add a
         topic to channel messages without a topic, regardless of the organization's
         [topic editing permissions](/help/restrict-moving-messages). As of this
         feature level, messages without topics have the same restrictions for
@@ -13151,15 +13119,16 @@ paths:
       tags: ["server_and_organizations"]
       x-requires-administrator: true
       description: |
-        Fetch all the public and standard [data exports][export-data]
-        of the organization.
+        Fetch all [public data exports][public-data-export] and
+        [full data exports with member consent][full-data-export] of the organization.
 
         **Changes**: Prior to Zulip 10.0 (feature level 304), only
         public data exports could be fetched using this endpoint.
 
         New in Zulip 2.1.
 
-        [export-data]: /help/export-your-organization#export-for-migrating-to-zulip-cloud-or-a-self-hosted-server
+        [public-data-export]: /help/export-your-organization#export-of-public-data
+        [full-data-export]: /help/export-your-organization#full-export-with-member-consent
       responses:
         "200":
           description: Success.
@@ -13204,7 +13173,8 @@ paths:
       tags: ["server_and_organizations"]
       x-requires-administrator: true
       description: |
-        Create a public or a standard [data export][export-data] of the organization.
+        Create a [public data export][public-data-export] or a
+        [full data export with member consent][full-data-export] of the organization.
 
         !!! warn ""
 
@@ -13217,7 +13187,8 @@ paths:
 
         New in Zulip 2.1.
 
-        [export-data]: /help/export-your-organization#export-for-migrating-to-zulip-cloud-or-a-self-hosted-server
+        [public-data-export]: /help/export-your-organization#export-of-public-data
+        [full-data-export]: /help/export-your-organization#full-export-with-member-consent
         [data-export]: https://zulip.readthedocs.io/en/stable/production/export-and-import.html#data-export
         [backups]: https://zulip.readthedocs.io/en/stable/production/export-and-import.html#backups
       requestBody:
@@ -13229,10 +13200,10 @@ paths:
               properties:
                 export_type:
                   description: |
-                    Whether to create a public or a standard data export.
+                    Whether to create a public export or a full export with member consent.
 
                     - 1 = Public data export.
-                    - 2 = Standard data export.
+                    - 2 = Full data export with member consent.
 
                     If not specified, defaults to 1.
 
@@ -13287,7 +13258,7 @@ paths:
       tags: ["server_and_organizations"]
       x-requires-administrator: true
       description: |
-        Fetches which users have [consented](/help/export-your-organization#configure-whether-administrators-can-export-your-private-data)
+        Fetches which users have [consented](/help/export-your-organization#full-export-with-member-consent)
         for their private data to be exported by organization administrators.
 
         **Changes**: New in Zulip 10.0 (feature level 295).
@@ -16313,22 +16284,6 @@ paths:
                               setting controlled this permission; `true` corresponded to `Everyone`, and
                               `false` to `Admins`.
                           - $ref: "#/components/schemas/GroupSettingValue"
-                      realm_can_move_messages_between_channels_group:
-                        allOf:
-                          - description: |
-                              Present if `realm` is present in `fetch_event_types`.
-
-                              A [group-setting value](/api/group-setting-values) defining the set of
-                              users who have permission to move messages from one channel to another
-                              in the organization.
-
-                              **Changes**: New in Zulip 10.0 (feature level 310). Previously, this
-                              permission was controlled by the enum `move_messages_between_streams_policy`.
-                              Values were 1=Members, 2=Admins, 3=Full members, 4=Moderators, 6=Nobody.
-
-                              In Zulip 7.0 (feature level 159), `Nobody` was added as an option to
-                              `move_messages_between_streams_policy` enum.
-                          - $ref: "#/components/schemas/GroupSettingValue"
                       realm_bot_creation_policy:
                         type: integer
                         description: |
@@ -16892,6 +16847,29 @@ paths:
                           **Changes**: Nobody added as an option in Zulip 7.0 (feature level 159).
 
                           New in Zulip 5.0 (feature level 75).
+
+                          [permission-level]: /api/roles-and-permissions#permission-levels
+                          [calc-full-member]: /api/roles-and-permissions#determining-if-a-user-is-a-full-member
+                      realm_move_messages_between_streams_policy:
+                        type: integer
+                        description: |
+                          Present if `realm` is present in `fetch_event_types`.
+
+                          The [policy][permission-level] for which users can move messages
+                          from one channel to another.
+
+                          - 1 = Members only
+                          - 2 = Administrators only
+                          - 3 = [Full members][calc-full-member] only
+                          - 4 = Moderators only
+                          - 6 = Nobody
+
+                          See [`PATCH /messages/{message_id}`](/api/update-message) for details
+                          and history of how message editing permissions work.
+
+                          **Changes**: Nobody added as an option in Zulip 7.0 (feature level 159).
+
+                          New in Zulip 4.0 (feature level 56).
 
                           [permission-level]: /api/roles-and-permissions#permission-levels
                           [calc-full-member]: /api/roles-and-permissions#determining-if-a-user-is-a-full-member
@@ -20314,19 +20292,6 @@ paths:
                   items:
                     type: integer
                   example: [1, 2, 3, 4]
-                subgroups:
-                  description: |
-                    An array containing the IDs of the initial subgroups for the new
-                    user group.
-
-                    User can add subgroups to the new group irrespective of other
-                    permissions for the new group.
-
-                    **Changes**: New in Zulip 10.0 (feature level 311).
-                  type: array
-                  items:
-                    type: integer
-                  example: [11]
                 can_add_members_group:
                   allOf:
                     - description: |
@@ -20410,8 +20375,6 @@ paths:
             encoding:
               members:
                 contentType: application/json
-              subgroups:
-                contentType: application/json
               can_add_members_group:
                 contentType: application/json
               can_join_group:
@@ -20480,32 +20443,10 @@ paths:
                   items:
                     type: integer
                   example: [12, 13]
-                delete_subgroups:
-                  description: |
-                    The list of user group IDs to be removed from the user group.
-
-                    **Changes**: New in Zulip 10.0 (feature level 311).
-                  type: array
-                  items:
-                    type: integer
-                  example: [9]
-                add_subgroups:
-                  description: |
-                    The list of user group IDs to be added to the user group.
-
-                    **Changes**: New in Zulip 10.0 (feature level 311).
-                  type: array
-                  items:
-                    type: integer
-                  example: [9]
             encoding:
               delete:
                 contentType: application/json
               add:
-                contentType: application/json
-              delete_subgroups:
-                contentType: application/json
-              add_subgroups:
                 contentType: application/json
       responses:
         "200":
@@ -21076,7 +21017,7 @@ paths:
                   type: array
                   items:
                     type: integer
-                  example: [10]
+                  example: [9, 10]
             encoding:
               delete:
                 contentType: application/json
@@ -22218,10 +22159,11 @@ components:
         export_type:
           type: integer
           description: |
-            Whether the data export is a public or a standard data export.
+            Whether the data export is a public data export or a
+            full data export with member consent.
 
             - 1 = Public data export.
-            - 2 = Standard data export.
+            - 2 = Full data export with member consent.
 
             **Changes**: New in Zulip 10.0 (feature level 304). Previously,
             the export type was not included in these objects because only

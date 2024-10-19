@@ -381,14 +381,9 @@ export function update_messages(events) {
         const stream_archived = old_stream === undefined;
 
         if (!topic_edited && !stream_changed) {
-            // If the topic or stream of the anchor message was changed,
+            // If the topic or stream of the message was changed,
             // it will be rerendered if present in any rendered list.
-            //
-            // But for content edits, we need to schedule it to be
-            // rerendered, if we have a local copy of it.
-            if (anchor_message !== undefined) {
-                messages_to_rerender.push(anchor_message);
-            }
+            messages_to_rerender.push(anchor_message);
         } else {
             const going_forward_change = ["change_later", "change_all"].includes(
                 event.propagate_mode,

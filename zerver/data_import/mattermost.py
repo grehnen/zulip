@@ -132,11 +132,15 @@ def convert_user_data(
     realm_id: int,
     team_name: str,
 ) -> None:
-    for user_data in user_data_map.values():
-        if check_user_in_team(user_data, team_name) or user_data["is_mirror_dummy"]:
-            user = process_user(user_data, realm_id, team_name, user_id_mapper)
-            user_handler.add_user(user)
-    user_handler.validate_user_emails()
+    user_data_list = []
+    for username in user_data_map:
+        user = user_data_map[username]
+        if check_user_in_team(user, team_name) or user["is_mirror_dummy"]:
+            user_data_list.append(user)
+
+    for raw_item in user_data_list:
+        user = process_user(raw_item, realm_id, team_name, user_id_mapper)
+        user_handler.add_user(user)
 
 
 def convert_channel_data(

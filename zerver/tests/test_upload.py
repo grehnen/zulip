@@ -121,28 +121,7 @@ class FileUploadTest(UploadSerializeMixin, ZulipTestCase):
         # would be 1MB.
         with self.settings(MAX_FILE_UPLOAD_SIZE=0):
             result = self.client_post("/json/user_uploads", {"f1": fp})
-        self.assert_json_error(
-            result,
-            "File is larger than this server's configured maximum upload size (0 MiB).",
-        )
-
-    def test_file_too_big_failure_standard_plan(self) -> None:
-        """
-        Verify error message where a plan is involved.
-        """
-        self.login("hamlet")
-        fp = StringIO("bah!")
-        fp.name = "a.txt"
-
-        realm = get_realm("zulip")
-        realm.plan_type = Realm.PLAN_TYPE_LIMITED
-        realm.save()
-        with self.settings(MAX_FILE_UPLOAD_SIZE=0):
-            result = self.client_post("/json/user_uploads", {"f1": fp})
-        self.assert_json_error(
-            result,
-            "File is larger than the maximum upload size (0 MiB) allowed by your organization's plan.",
-        )
+        self.assert_json_error(result, "Uploaded file is larger than the allowed limit of 0 MiB")
 
     def test_multiple_upload_failure(self) -> None:
         """
@@ -1256,12 +1235,12 @@ class AvatarTest(UploadSerializeMixin, ZulipTestCase):
             # Test cross_realm_bot avatar access using email.
             response = self.api_get(hamlet, "/avatar/welcome-bot@zulip.com", {"foo": "bar"})
             redirect_url = response["Location"]
-            self.assertTrue(redirect_url.endswith(str(avatar_url(cross_realm_bot)) + "?foo=bar"))
+            self.assertTrue(redirect_url.endswith(str(avatar_url(cross_realm_bot)) + "&foo=bar"))
 
             # Test cross_realm_bot avatar access using id.
             response = self.api_get(hamlet, f"/avatar/{cross_realm_bot.id}", {"foo": "bar"})
             redirect_url = response["Location"]
-            self.assertTrue(redirect_url.endswith(str(avatar_url(cross_realm_bot)) + "?foo=bar"))
+            self.assertTrue(redirect_url.endswith(str(avatar_url(cross_realm_bot)) + "&foo=bar"))
 
             # Without spectators enabled, no unauthenticated access.
             response = self.client_get("/avatar/cordelia@zulip.com", {"foo": "bar"})

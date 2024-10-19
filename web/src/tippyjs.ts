@@ -202,11 +202,11 @@ export function initialize(): void {
     });
 
     // Variant of .tippy-left-sidebar-tooltip configuration. Since
-    // some elements don't have an always visible label, and
-    // thus hovering them is a way to find out what they do, give
-    // them the shorter LONG_HOVER_DELAY.
+    // this element doesn't have an always visible label, and
+    // thus hovering it is a way to find out what it does, give
+    // it the faster LONG_HOVER_DELAY.
     tippy.delegate("body", {
-        target: ".tippy-left-sidebar-tooltip-no-label-delay",
+        target: "#show-all-direct-messages",
         placement: "right",
         delay: LONG_HOVER_DELAY,
         appendTo: () => document.body,

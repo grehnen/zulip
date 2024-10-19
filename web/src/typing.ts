@@ -111,15 +111,10 @@ function notify_server_stop(to: Recipient): void {
 export function get_recipient(): Recipient | null {
     const message_type = compose_state.get_message_type();
     if (message_type === "private") {
-        const user_ids = get_user_ids_array();
-        // compose box with no valid user pills.
-        if (user_ids === null) {
-            return null;
-        }
         return {
             message_type: "direct",
             notification_event_type: "typing",
-            ids: user_ids,
+            ids: get_user_ids_array()!,
         };
     }
     if (message_type === "stream") {
@@ -130,10 +125,6 @@ export function get_recipient(): Recipient | null {
             return null;
         }
         const topic = compose_state.topic();
-        if (realm.realm_mandatory_topics && topic === "") {
-            // compose box with empty topic string.
-            return null;
-        }
         return {
             message_type: "stream",
             notification_event_type: "typing",

@@ -8,6 +8,7 @@ import render_left_sidebar_stream_actions_popover from "../templates/popovers/le
 
 import * as blueslip from "./blueslip";
 import * as browser_history from "./browser_history";
+import * as compose_actions from "./compose_actions";
 import * as composebox_typeahead from "./composebox_typeahead";
 import * as dialog_widget from "./dialog_widget";
 import * as dropdown_widget from "./dropdown_widget";
@@ -187,6 +188,21 @@ function build_stream_popover(opts) {
                 e.stopPropagation();
             });
 
+            // New topic in stream menu
+            $popper.on("click", ".popover_new_topic_button", (e) => {
+                const sub = stream_popover_sub(e);
+                hide_stream_popover();
+
+                compose_actions.start({
+                    message_type: "stream",
+                    trigger: "popover new topic button",
+                    stream_id: sub.stream_id,
+                    topic: "",
+                });
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
             // Unsubscribe
             $popper.on("click", ".popover_sub_unsub_button", (e) => {
                 const sub = stream_popover_sub(e);
@@ -354,7 +370,7 @@ export async function build_move_topic_to_stream_popover(
 
     // When the modal is opened for moving the whole topic from left sidebar,
     // we do not have any message object and so we disable the stream input
-    // based on the can_move_messages_between_channels_group setting and topic
+    // based on the move_messages_between_streams_policy setting and topic
     // input based on edit_topic_policy. In other cases, message object is
     // available and thus we check the time-based permissions as well in the
     // below if block to enable or disable the stream and topic input.

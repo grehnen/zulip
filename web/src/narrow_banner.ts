@@ -192,21 +192,7 @@ export function pick_empty_narrow_banner(): NarrowBannerData {
             return SPECTATOR_STREAM_NARROW_BANNER;
         }
 
-        if (streams.length === 1) {
-            const stream_sub = stream_data.get_sub_by_id_string(
-                util.the(current_filter.operands("channel")),
-            );
-            if (!stream_sub) {
-                return {
-                    title: $t({
-                        defaultMessage:
-                            "This channel doesn't exist, or you are not allowed to view it.",
-                    }),
-                };
-            }
-        }
-
-        // A valid stream, but a topic that doesn't exist yet.
+        // A stream > topic that doesn't exist yet.
         if (num_terms === 2 && streams.length === 1 && topics.length === 1) {
             return default_banner;
         }
@@ -304,10 +290,7 @@ export function pick_empty_narrow_banner(): NarrowBannerData {
                 }
 
                 return {
-                    title: $t({
-                        defaultMessage:
-                            "This channel doesn't exist, or you are not allowed to view it.",
-                    }),
+                    title: $t({defaultMessage: "This channel does not exist or is private."}),
                 };
             }
             // else fallthrough to default case

@@ -20,39 +20,6 @@ format used by the Zulip server that they are interacting with.
 
 ## Changes in Zulip 10.0
 
-**Feature level 312**
-
-* [`GET /events`](/api/get-events): Added `realm_export_consent` event
-  type to allow realm administrators to view which users have
-  consented to export their private data as part of a realm export.
-
-**Feature level 311**
-
-* [`POST /user_groups/{user_group_id}/members`](/api/update-user-group-members):
-  Added `add_subgroups` and `delete_subgroups` parameters to support updating
-  subgroups of a user group using this endpoint.
-* [`POST /user_groups/create`](/api/create-user-group): Added `subgroups`
-  parameter to support setting subgroups of a user group during its creation.
-
-**Feature level 310**
-
-* `PATCH /realm`, [`GET /events`](/api/get-events),
-  [`POST /register`](/api/register-queue):
-  Added `can_move_messages_between_channels_group` realm setting which is a
-  [group-setting value](/api/group-setting-values) describing the set of users
-  with permission to move messages from one channel to another in the organization.
-* `PATCH /realm`, [`GET /events`](/api/get-events): Removed
-  `move_messages_between_streams_policy` property, as the permission to move
-  messages between channels in the organization is now controlled by
-  `can_move_messages_between_channels_group` setting.
-
-**Feature level 309**
-
-* [Group-setting values](/api/group-setting-values): Starting with
-  this feature level, it's now possible to use group-setting values in
-  production for those settings whose value is not required to be a
-  system group
-
 **Feature level 308**
 
 * [`POST /register`](/api/register-queue), [`GET /events`](/api/get-events),
@@ -112,12 +79,11 @@ format used by the Zulip server that they are interacting with.
 * [`GET /export/realm`](/api/get-realm-exports),
   [`GET /events`](/api/get-events): Added `export_type` field
   to the dictionaries in `exports` array. It indicates whether
-  the export is of public data or full data with user consent
-  (standard export).
+  the export is of public data or full data with user consent.
 
 * [`POST /export/realm`](/api/get-realm-exports): Added `export_type`
   parameter to add support for admins to decide whether to create a
-  public or a standard data export.
+  public data export or a full data export with member consent.
 
 **Feature level 303**
 
@@ -130,7 +96,7 @@ format used by the Zulip server that they are interacting with.
   [group-setting value](/api/group-setting-values), will never include
   deactivated users in the `direct_members` list for settings whose
   value is an anonymous group.
-* [`POST /user_groups/{user_group_id}/members`](/api/update-user-group-members):
+* [`PATCH /user_groups/{user_group_id}/members`](/api/update-user-group-members):
   Deactivated users cannot be added or removed from a user group; they
   are now implicitly not members of any groups while deactivated.
 * [`GET /events`](/api/get-events): User reactivation event is not sent
@@ -219,8 +185,8 @@ format used by the Zulip server that they are interacting with.
 **Feature level 295**
 
 * [`GET /export/realm/consents`](/api/get-realm-export-consents): Added
-  a new endpoint to fetch the [consents of users](/help/export-your-organization#configure-whether-administrators-can-export-your-private-data)
-  for their private data exports.
+  a new endpoint to fetch the consents of users for their [private data
+  exports](/help/export-your-organization#full-export-with-member-consent).
 * `/api/v1/tus` is an endpoint implementing the [`tus`
   protocol](https://tus.io/protocols/resumable-upload) for resumable uploads.
   Clients which send authenticated credentials (either via browser-based

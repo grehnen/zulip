@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from typing import Any, TypedDict
 
+from django.conf import settings
 from django.db import connection, transaction
 from django.db.models import F, Q, QuerySet
 from django.utils.timezone import now as timezone_now
@@ -154,31 +155,42 @@ def access_user_group_for_update(
     if user_group.is_system_group:
         raise JsonableError(_("Insufficient permission"))
 
-    # Users with permission to manage the group have all the permissions
-    # including joining/leaving the group and add others to group.
-    if user_profile.can_manage_all_groups():
+    assert permission_setting in NamedUserGroup.GROUP_PERMISSION_SETTINGS
+    if (
+        permission_setting
+        in [
+            "can_manage_group",
+            "can_add_members_group",
+        ]
+        and user_profile.can_manage_all_groups()
+    ):
         return user_group
 
     user_has_permission = user_has_permission_for_group_setting(
-        user_group.can_manage_group,
+        getattr(user_group, permission_setting),
         user_profile,
-        NamedUserGroup.GROUP_PERMISSION_SETTINGS["can_manage_group"],
+        NamedUserGroup.GROUP_PERMISSION_SETTINGS[permission_setting],
     )
-    if user_has_permission:
-        return user_group
 
-    if permission_setting != "can_manage_group":
-        assert permission_setting in NamedUserGroup.GROUP_PERMISSION_SETTINGS
+    # Users with permission to manage the group should be able to add members
+    # to the group. This also takes care of the case where a user creating a group
+    # with themselves having the permission to manage it don't have to explicitly
+    # add themselves to can_add_members_group.
+    if (
+        not user_has_permission
+        and permission_setting == "can_add_members_group"
+        and permission_setting != "can_manage_group"
+    ):
         user_has_permission = user_has_permission_for_group_setting(
-            getattr(user_group, permission_setting),
+            user_group.can_manage_group,
             user_profile,
-            NamedUserGroup.GROUP_PERMISSION_SETTINGS[permission_setting],
+            NamedUserGroup.GROUP_PERMISSION_SETTINGS["can_manage_group"],
         )
 
-        if user_has_permission:
-            return user_group
+    if not user_has_permission:
+        raise JsonableError(_("Insufficient permission"))
 
-    raise JsonableError(_("Insufficient permission"))
+    return user_group
 
 
 def access_user_group_for_deactivation(
@@ -271,12 +283,7 @@ def access_user_group_for_deactivation(
 
 @contextmanager
 def lock_subgroups_with_respect_to_supergroup(
-    potential_subgroup_ids: Collection[int],
-    potential_supergroup_id: int,
-    acting_user: UserProfile,
-    *,
-    permission_setting: str | None,
-    creating_group: bool = False,
+    potential_subgroup_ids: Collection[int], potential_supergroup_id: int, acting_user: UserProfile
 ) -> Iterator[LockedUserGroupContext]:
     """This locks the user groups with the given potential_subgroup_ids, as well
     as their indirect subgroups, followed by the potential supergroup. It
@@ -306,17 +313,9 @@ def lock_subgroups_with_respect_to_supergroup(
         # the transaction with a JsonableError by handling the DatabaseError.
         # But at the current scale of concurrent requests, we rely on
         # Postgres's deadlock detection when it occurs.
-        if creating_group:
-            # User can add subgroups to the group while creating it irrespective
-            # of whether the user has other permissions for that group.
-            potential_supergroup = get_user_group_by_id_in_realm(
-                potential_supergroup_id, acting_user.realm, for_read=False
-            )
-        else:
-            assert permission_setting is not None
-            potential_supergroup = access_user_group_for_update(
-                potential_supergroup_id, acting_user, permission_setting=permission_setting
-            )
+        potential_supergroup = access_user_group_for_update(
+            potential_supergroup_id, acting_user, permission_setting="can_manage_group"
+        )
         # We avoid making a separate query for user_group_ids because the
         # recursive query already returns those user groups.
         potential_subgroups = [
@@ -356,6 +355,11 @@ def check_setting_configuration_for_system_groups(
     setting_name: str,
     permission_configuration: GroupPermissionSetting,
 ) -> None:
+    if setting_name != "can_mention_group" and (
+        not settings.ALLOW_GROUP_VALUED_SETTINGS and not setting_group.is_system_group
+    ):
+        raise SystemGroupRequiredError(setting_name)
+
     if permission_configuration.require_system_group and not setting_group.is_system_group:
         raise SystemGroupRequiredError(setting_name)
 
@@ -1013,6 +1017,9 @@ def parse_group_setting_value(
 
     if len(setting_value.direct_members) == 0 and len(setting_value.direct_subgroups) == 1:
         return setting_value.direct_subgroups[0]
+
+    if not settings.ALLOW_GROUP_VALUED_SETTINGS:
+        raise SystemGroupRequiredError(setting_name)
 
     return setting_value
 
